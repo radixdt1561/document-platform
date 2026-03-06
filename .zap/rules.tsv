@@ -1,0 +1,5 @@
+# ZAP rule overrides
+# Format: rule_id	IGNORE|WARN|FAIL	description
+10202	IGNORE	Absence of Anti-CSRF Tokens (handled by custom double-submit)
+10035	IGNORE	Strict-Transport-Security (set by Helmet HSTS)
+10038	IGNORE	Content Security Policy (set by Helmet CSP)

@@ -1,0 +1,29 @@
+{
+  "name": "worker-service",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js",
+    "audit": "npm audit --audit-level=high",
+    "audit:fix": "npm audit fix"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.1002.0",
+    "aws-sdk": "^2.1693.0",
+    "dotenv": "^17.3.1",
+    "express": "^5.2.1",
+    "cors": "^2.8.5",
+    "helmet": "^8.0.0",
+    "express-rate-limit": "^7.5.0",
+    "hpp": "^0.2.3",
+    "express-validator": "^7.2.1",
+    "piscina": "^5.1.4",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "winston-cloudwatch": "^6.3.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
