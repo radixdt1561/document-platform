@@ -5,6 +5,9 @@ const fs     = require('fs');
 const path   = require('path');
 const app    = require('./src/app');
 const logger = require('./src/utils/logger');
+const { startMemoryMonitor } = require('./src/utils/memoryMonitor');
+
+startMemoryMonitor();
 
 const PORT      = process.env.PORT      || ;
 const HTTP_PORT = process.env.HTTP_PORT || (PORT + 1000);

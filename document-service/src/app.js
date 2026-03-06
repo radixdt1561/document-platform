@@ -29,7 +29,7 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const ms = Date.now() - start;
-    res.setHeader('X-Response-Time', `${ms}ms`);
+    if (!res.headersSent) res.setHeader('X-Response-Time', `${ms}ms`);
     logger.info(`${req.method} ${req.path}`, { status: res.statusCode, ms, ip: req.ip });
   });
   next();
