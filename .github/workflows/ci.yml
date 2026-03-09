@@ -49,7 +49,7 @@ jobs:
         working-directory: ${{ matrix.service }}
 
       - name: Unit tests
-        run: ${{ matrix.pkg_manager }} run test:unit -- --ci --coverage
+        run: ${{ matrix.pkg_manager }} run test:unit
         working-directory: ${{ matrix.service }}
         env:
           NODE_ENV: test
@@ -58,7 +58,7 @@ jobs:
           ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
 
       - name: Integration tests
-        run: ${{ matrix.pkg_manager }} run test:integration -- --ci
+        run: ${{ matrix.pkg_manager }} run test:integration
         working-directory: ${{ matrix.service }}
         env:
           NODE_ENV: test
