@@ -7,11 +7,12 @@ on:
     branches-ignore: [main]
 
 env:
-  NODE_VERSION: "22"
+  NODE_VERSION: '22'
 
 permissions:
   id-token: write # Required for OIDC token generation
   contents: read # Good practice for checkout
+
 
 jobs:
   # ── 1. Test ──────────────────────────────────────────────────────────────────
@@ -58,7 +59,7 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: test-secret
           REFRESH_TOKEN_SECRET: test-refresh-secret
-          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
 
       - name: Integration tests
         run: ${{ matrix.pkg_manager }} run test:integration
@@ -67,7 +68,7 @@ jobs:
           NODE_ENV: test
           JWT_SECRET: test-secret
           REFRESH_TOKEN_SECRET: test-refresh-secret
-          ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000000"
+          ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -84,12 +85,12 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { service: auth-service, pkg_manager: pnpm }
-          - { service: document-service, pkg_manager: npm }
-          - { service: analytics-service, pkg_manager: npm }
-          - { service: user-service, pkg_manager: npm }
-          - { service: worker-service, pkg_manager: npm }
-          - { service: api-gateway, pkg_manager: npm }
+          - { service: auth-service,      pkg_manager: pnpm }
+          - { service: document-service,  pkg_manager: npm  }
+          - { service: analytics-service, pkg_manager: npm  }
+          - { service: user-service,      pkg_manager: npm  }
+          - { service: worker-service,    pkg_manager: npm  }
+          - { service: api-gateway,       pkg_manager: npm  }
     steps:
       - uses: actions/checkout@v4
 
@@ -131,112 +132,84 @@ jobs:
     needs: [test, audit]
     if: github.ref == 'refs/heads/main'
 
-    steps: 
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
 
-       -  name: Debug secrets 
-          run: |
-            if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
-              echo "AWS_ACCESS_KEY_ID missing"
-            else
-              echo "AWS_ACCESS_KEY_ID exists"
-            fi
+      - name: Check secrets are set
+        run: |
+          [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && echo "ERROR: AWS_ACCESS_KEY_ID is empty" || echo "AWS_ACCESS_KEY_ID is set"
+          [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && echo "ERROR: AWS_SECRET_ACCESS_KEY is empty" || echo "AWS_SECRET_ACCESS_KEY is set"
+      - name: check key
+        run: | 
+          aws sts get-caller-identity
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-
-      - name: Verify AWS credentials
-        run: aws sts get-caller-identity
+          aws-region:            us-east-1
 
       - name: Build & deploy each Lambda
         env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASS: ${{ secrets.DB_PASS }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          DB_HOST:              ${{ secrets.DB_HOST }}
+          DB_USER:              ${{ secrets.DB_USER }}
+          DB_PASS:              ${{ secrets.DB_PASS }}
+          DB_NAME:              ${{ secrets.DB_NAME }}
+          JWT_SECRET:           ${{ secrets.JWT_SECRET }}
           REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-          AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
-          SQS_QUEUE_URL: ${{ secrets.SQS_QUEUE_URL }}
-          SQS_QUEUE_ARN: ${{ secrets.SQS_QUEUE_ARN }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          ENCRYPTION_KEY:       ${{ secrets.ENCRYPTION_KEY }}
+          AWS_BUCKET:           ${{ secrets.AWS_BUCKET }}
+          SQS_QUEUE_URL:        ${{ secrets.SQS_QUEUE_URL }}
+          SQS_QUEUE_ARN:        ${{ secrets.SQS_QUEUE_ARN }}
+          REDIS_URL:            ${{ secrets.REDIS_URL }}
+          ALLOWED_ORIGINS:      ${{ secrets.ALLOWED_ORIGINS }}
+          GOOGLE_CLIENT_ID:     ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          GOOGLE_CALLBACK_URL:  ${{ secrets.GOOGLE_CALLBACK_URL }}
+          SMTP_HOST:            ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:            ${{ secrets.SMTP_PORT }}
+          SMTP_USER:            ${{ secrets.SMTP_USER }}
+          SMTP_PASS:            ${{ secrets.SMTP_PASS }}
         run: |
-
           deploy_lambda() {
-            local svc=$1
-            local fn=$2
-
+            local svc=$1 fn=$2
             echo "=== Deploying $fn ==="
 
+            # Install prod dependencies
             if [ -f "$svc/pnpm-lock.yaml" ]; then
               pnpm install --frozen-lockfile --prod -C $svc
             else
               npm ci --prefix $svc --omit=dev
             fi
 
+            # Zip and upload
             (cd $svc && zip -qr /tmp/${fn}.zip . --exclude "*.test.js" "tests/*" "coverage/*" ".env*")
-
             aws lambda update-function-code \
               --function-name $fn \
               --zip-file fileb:///tmp/${fn}.zip \
               --no-cli-pager
 
-            aws lambda wait function-updated \
-              --function-name $fn
+            # Wait for update to complete before updating config
+            aws lambda wait function-updated --function-name $fn
           }
 
-          deploy_lambda auth-service doc-platform-auth
-          # deploy_lambda document-service doc-platform-documents
+          deploy_lambda auth-service      doc-platform-auth
+          # deploy_lambda document-service  doc-platform-documents
           # deploy_lambda analytics-service doc-platform-analytics
-          # deploy_lambda user-service doc-platform-users
-          # deploy_lambda worker-service doc-platform-worker
+          # deploy_lambda user-service      doc-platform-users
+          # deploy_lambda worker-service    doc-platform-worker
 
       - name: Update Lambda environment variables
-        env:
-          DB_HOST: ${{ secrets.DB_HOST }}
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASS: ${{ secrets.DB_PASS }}
-          DB_NAME: ${{ secrets.DB_NAME }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
-          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
-          AWS_BUCKET: ${{ secrets.AWS_BUCKET }}
-          SQS_QUEUE_URL: ${{ secrets.SQS_QUEUE_URL }}
-          REDIS_URL: ${{ secrets.REDIS_URL }}
-          ALLOWED_ORIGINS: ${{ secrets.ALLOWED_ORIGINS }}
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
-          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
-          GOOGLE_CALLBACK_URL: ${{ secrets.GOOGLE_CALLBACK_URL }}
-          SMTP_HOST: ${{ secrets.SMTP_HOST }}
-          SMTP_PORT: ${{ secrets.SMTP_PORT }}
-          SMTP_USER: ${{ secrets.SMTP_USER }}
-          SMTP_PASS: ${{ secrets.SMTP_PASS }}
         run: |
-
           COMMON_VARS="{\
             DB_HOST={Value=$DB_HOST},\
             DB_USER={Value=$DB_USER},\
@@ -257,26 +230,39 @@ jobs:
             NODE_ENV={Value=production}\
           }"
 
-          for fn in doc-platform-analytics doc-platform-users doc-platform-worker doc-platform-documents
-          do
-            echo "Updating env for $fn"
-
+          for fn in doc-platform-analytics doc-platform-users doc-platform-worker doc-platform-documents; do
             aws lambda update-function-configuration \
               --function-name $fn \
               --environment "Variables=$COMMON_VARS" \
               --no-cli-pager
-
-            aws lambda wait function-updated \
-              --function-name $fn
+            aws lambda wait function-updated --function-name $fn
           done
 
+          # Auth service gets extra Google OAuth vars
           aws lambda update-function-configuration \
             --function-name doc-platform-auth \
             --environment "Variables=${COMMON_VARS%\}},GOOGLE_CLIENT_ID={Value=$GOOGLE_CLIENT_ID},GOOGLE_CLIENT_SECRET={Value=$GOOGLE_CLIENT_SECRET},GOOGLE_CALLBACK_URL={Value=$GOOGLE_CALLBACK_URL}}" \
             --no-cli-pager
-
-          aws lambda wait function-updated \
-            --function-name doc-platform-auth
+          aws lambda wait function-updated --function-name doc-platform-auth
+        env:
+          DB_HOST:              ${{ secrets.DB_HOST }}
+          DB_USER:              ${{ secrets.DB_USER }}
+          DB_PASS:              ${{ secrets.DB_PASS }}
+          DB_NAME:              ${{ secrets.DB_NAME }}
+          JWT_SECRET:           ${{ secrets.JWT_SECRET }}
+          REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
+          ENCRYPTION_KEY:       ${{ secrets.ENCRYPTION_KEY }}
+          AWS_BUCKET:           ${{ secrets.AWS_BUCKET }}
+          SQS_QUEUE_URL:        ${{ secrets.SQS_QUEUE_URL }}
+          REDIS_URL:            ${{ secrets.REDIS_URL }}
+          ALLOWED_ORIGINS:      ${{ secrets.ALLOWED_ORIGINS }}
+          GOOGLE_CLIENT_ID:     ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          GOOGLE_CALLBACK_URL:  ${{ secrets.GOOGLE_CALLBACK_URL }}
+          SMTP_HOST:            ${{ secrets.SMTP_HOST }}
+          SMTP_PORT:            ${{ secrets.SMTP_PORT }}
+          SMTP_USER:            ${{ secrets.SMTP_USER }}
+          SMTP_PASS:            ${{ secrets.SMTP_PASS }}
 
   # ── 4. Load test (post-deploy, main only) ────────────────────────────────────
   load-test:
@@ -301,4 +287,4 @@ jobs:
         run: k6 run document-service/tests/load.test.js
         env:
           BASE_URL: ${{ secrets.LOAD_TEST_BASE_URL }}
-          TOKEN: ${{ secrets.LOAD_TEST_TOKEN }}
+          TOKEN:    ${{ secrets.LOAD_TEST_TOKEN }}
