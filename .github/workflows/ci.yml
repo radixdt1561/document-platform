@@ -37,8 +37,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: ${{ matrix.pkg_manager }}
-          cache-dependency-path: ${{ matrix.service }}/${{ matrix.lock_file }}
 
       - name: Install (pnpm)
         if: matrix.pkg_manager == 'pnpm'
