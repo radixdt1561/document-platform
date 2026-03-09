@@ -21,8 +21,10 @@ jobs:
         include:
           - service: auth-service
             pkg_manager: pnpm
+            lock_file: pnpm-lock.yaml
           - service: document-service
             pkg_manager: npm
+            lock_file: package-lock.json
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +38,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: ${{ matrix.pkg_manager }}
-          cache-dependency-path: ${{ matrix.service }}/${{ matrix.pkg_manager == 'pnpm' && 'pnpm-lock.yaml' || 'package-lock.json' }}
+          cache-dependency-path: ${{ matrix.service }}/${{ matrix.lock_file }}
 
       - name: Install (pnpm)
         if: matrix.pkg_manager == 'pnpm'
