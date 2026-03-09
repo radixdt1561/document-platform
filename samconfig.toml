@@ -1,0 +1,38 @@
+version = 0.1
+
+[default.global.parameters]
+stack_name = "document-platform"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+capabilities        = "CAPABILITY_IAM"
+confirm_changeset   = false
+fail_on_empty_changeset = false
+resolve_s3          = false
+# Set SAM_DEPLOY_BUCKET in your shell or CI secrets
+s3_bucket           = "${SAM_DEPLOY_BUCKET}"
+region              = "ap-south-1"
+parameter_overrides = [
+  "DbHost=${DB_HOST}",
+  "DbUser=${DB_USER}",
+  "DbPass=${DB_PASS}",
+  "DbName=${DB_NAME}",
+  "JwtSecret=${JWT_SECRET}",
+  "RefreshTokenSecret=${REFRESH_TOKEN_SECRET}",
+  "EncryptionKey=${ENCRYPTION_KEY}",
+  "AwsBucket=${AWS_BUCKET}",
+  "SqsQueueUrl=${SQS_QUEUE_URL}",
+  "SqsQueueArn=${SQS_QUEUE_ARN}",
+  "RedisUrl=${REDIS_URL}",
+  "AllowedOrigins=${ALLOWED_ORIGINS}",
+  "GoogleClientId=${GOOGLE_CLIENT_ID}",
+  "GoogleClientSecret=${GOOGLE_CLIENT_SECRET}",
+  "GoogleCallbackUrl=${GOOGLE_CALLBACK_URL}",
+  "SmtpHost=${SMTP_HOST}",
+  "SmtpPort=${SMTP_PORT}",
+  "SmtpUser=${SMTP_USER}",
+  "SmtpPass=${SMTP_PASS}"
+]

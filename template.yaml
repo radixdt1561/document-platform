@@ -3,21 +3,26 @@ Transform: AWS::Serverless-2016-10-31
 Description: Document Platform — fully serverless
 
 Parameters:
-  DbHost:        { Type: String }
-  DbUser:        { Type: String }
-  DbPass:        { Type: String, NoEcho: true }
-  DbName:        { Type: String }
-  DbPort:        { Type: String, Default: "5432" }
-  JwtSecret:     { Type: String, NoEcho: true }
-  EncryptionKey: { Type: String, NoEcho: true }
-  AwsBucket:     { Type: String }
-  SqsQueueUrl:   { Type: String }
-  SqsQueueArn:   { Type: String }
-  RedisUrl:      { Type: String }
-  AllowedOrigins:{ Type: String, Default: "http://localhost:3000" }
-  GoogleClientId:    { Type: String }
-  GoogleClientSecret:{ Type: String, NoEcho: true }
-  GoogleCallbackUrl: { Type: String }
+  DbHost:             { Type: String }
+  DbUser:             { Type: String }
+  DbPass:             { Type: String, NoEcho: true }
+  DbName:             { Type: String }
+  DbPort:             { Type: String, Default: "5432" }
+  JwtSecret:          { Type: String, NoEcho: true }
+  RefreshTokenSecret: { Type: String, NoEcho: true }
+  EncryptionKey:      { Type: String, NoEcho: true }
+  AwsBucket:          { Type: String }
+  SqsQueueUrl:        { Type: String }
+  SqsQueueArn:        { Type: String }
+  RedisUrl:           { Type: String }
+  AllowedOrigins:     { Type: String, Default: "http://localhost:3000" }
+  GoogleClientId:     { Type: String }
+  GoogleClientSecret: { Type: String, NoEcho: true }
+  GoogleCallbackUrl:  { Type: String }
+  SmtpHost:           { Type: String }
+  SmtpPort:           { Type: String, Default: "587" }
+  SmtpUser:           { Type: String }
+  SmtpPass:           { Type: String, NoEcho: true }
 
 Globals:
   Function:
@@ -27,19 +32,24 @@ Globals:
     Environment:
       Variables:
         NODE_ENV: production
-        DB_HOST: !Ref DbHost
-        DB_USER: !Ref DbUser
-        DB_PASS: !Ref DbPass
-        DB_NAME: !Ref DbName
-        DB_PORT: !Ref DbPort
-        JWT_SECRET: !Ref JwtSecret
-        ENCRYPTION_KEY: !Ref EncryptionKey
-        AWS_BUCKET: !Ref AwsBucket
-        SQS_QUEUE_URL: !Ref SqsQueueUrl
-        REDIS_URL: !Ref RedisUrl
-        ALLOWED_ORIGINS: !Ref AllowedOrigins
-        CLOUDWATCH_GROUP: /document-platform
-        CLOUDWATCH_REGION: !Ref AWS::Region
+        DB_HOST:              !Ref DbHost
+        DB_USER:              !Ref DbUser
+        DB_PASS:              !Ref DbPass
+        DB_NAME:              !Ref DbName
+        DB_PORT:              !Ref DbPort
+        JWT_SECRET:           !Ref JwtSecret
+        REFRESH_TOKEN_SECRET: !Ref RefreshTokenSecret
+        ENCRYPTION_KEY:       !Ref EncryptionKey
+        AWS_BUCKET:           !Ref AwsBucket
+        SQS_QUEUE_URL:        !Ref SqsQueueUrl
+        REDIS_URL:            !Ref RedisUrl
+        ALLOWED_ORIGINS:      !Ref AllowedOrigins
+        SMTP_HOST:            !Ref SmtpHost
+        SMTP_PORT:            !Ref SmtpPort
+        SMTP_USER:            !Ref SmtpUser
+        SMTP_PASS:            !Ref SmtpPass
+        CLOUDWATCH_GROUP:     /document-platform
+        CLOUDWATCH_REGION:    !Ref AWS::Region
 
 Resources:
 

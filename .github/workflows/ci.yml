@@ -179,6 +179,7 @@ jobs:
               DbPass=${{ secrets.DB_PASS }} \
               DbName=${{ secrets.DB_NAME }} \
               JwtSecret=${{ secrets.JWT_SECRET }} \
+              RefreshTokenSecret=${{ secrets.REFRESH_TOKEN_SECRET }} \
               EncryptionKey=${{ secrets.ENCRYPTION_KEY }} \
               AwsBucket=${{ secrets.AWS_BUCKET }} \
               SqsQueueUrl=${{ secrets.SQS_QUEUE_URL }} \
@@ -187,7 +188,11 @@ jobs:
               AllowedOrigins=${{ secrets.ALLOWED_ORIGINS }} \
               GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID }} \
               GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
-              GoogleCallbackUrl=${{ secrets.GOOGLE_CALLBACK_URL }}
+              GoogleCallbackUrl=${{ secrets.GOOGLE_CALLBACK_URL }} \
+              SmtpHost=${{ secrets.SMTP_HOST }} \
+              SmtpPort=${{ secrets.SMTP_PORT }} \
+              SmtpUser=${{ secrets.SMTP_USER }} \
+              SmtpPass=${{ secrets.SMTP_PASS }}
 
   # ── 4. Load test (post-deploy, main only) ────────────────────────────────────
   load-test:
