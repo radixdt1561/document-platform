@@ -1,0 +1,168 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Document Platform — fully serverless
+
+Parameters:
+  DbHost:        { Type: String }
+  DbUser:        { Type: String }
+  DbPass:        { Type: String, NoEcho: true }
+  DbName:        { Type: String }
+  DbPort:        { Type: String, Default: "5432" }
+  JwtSecret:     { Type: String, NoEcho: true }
+  EncryptionKey: { Type: String, NoEcho: true }
+  AwsBucket:     { Type: String }
+  SqsQueueUrl:   { Type: String }
+  SqsQueueArn:   { Type: String }
+  RedisUrl:      { Type: String }
+  AllowedOrigins:{ Type: String, Default: "http://localhost:3000" }
+  GoogleClientId:    { Type: String }
+  GoogleClientSecret:{ Type: String, NoEcho: true }
+  GoogleCallbackUrl: { Type: String }
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 256
+    Environment:
+      Variables:
+        NODE_ENV: production
+        DB_HOST: !Ref DbHost
+        DB_USER: !Ref DbUser
+        DB_PASS: !Ref DbPass
+        DB_NAME: !Ref DbName
+        DB_PORT: !Ref DbPort
+        JWT_SECRET: !Ref JwtSecret
+        ENCRYPTION_KEY: !Ref EncryptionKey
+        AWS_BUCKET: !Ref AwsBucket
+        SQS_QUEUE_URL: !Ref SqsQueueUrl
+        REDIS_URL: !Ref RedisUrl
+        ALLOWED_ORIGINS: !Ref AllowedOrigins
+        CLOUDWATCH_GROUP: /document-platform
+        CLOUDWATCH_REGION: !Ref AWS::Region
+
+Resources:
+
+  # ── Shared HTTP API ──────────────────────────────────────────────
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins: !Split [",", !Ref AllowedOrigins]
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+        AllowHeaders: [Content-Type, Authorization, X-CSRF-Token]
+        AllowCredentials: true
+
+  # ── Auth Service ─────────────────────────────────────────────────
+  AuthFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: doc-platform-auth
+      CodeUri: ./auth-service/
+      Handler: lambda/handler.handler
+      Environment:
+        Variables:
+          GOOGLE_CLIENT_ID: !Ref GoogleClientId
+          GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
+          GOOGLE_CALLBACK_URL: !Ref GoogleCallbackUrl
+      Policies: [CloudWatchLogsFullAccess]
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /auth/{proxy+}
+            Method: ANY
+
+  # ── Document Service ─────────────────────────────────────────────
+  DocumentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: doc-platform-documents
+      CodeUri: ./document-service/
+      Handler: lambda/handler.handler
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref AwsBucket
+        - SQSSendMessagePolicy:
+            QueueName: !Select [4, !Split ["/", !Ref SqsQueueUrl]]
+        - CloudWatchLogsFullAccess
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /documents/{proxy+}
+            Method: ANY
+        CsrfToken:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /documents/csrf-token
+            Method: GET
+
+  # ── Analytics Service ────────────────────────────────────────────
+  AnalyticsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: doc-platform-analytics
+      CodeUri: ./analytics-service/
+      Handler: lambda/handler.handler
+      Policies: [CloudWatchLogsFullAccess]
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /analytics/{proxy+}
+            Method: ANY
+
+  # ── User Service ─────────────────────────────────────────────────
+  UserFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: doc-platform-users
+      CodeUri: ./user-service/
+      Handler: lambda/handler.handler
+      Policies: [CloudWatchLogsFullAccess]
+      Events:
+        Proxy:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /users/{proxy+}
+            Method: ANY
+
+  # ── Worker Service (SQS-triggered) ───────────────────────────────
+  WorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: doc-platform-worker
+      CodeUri: ./worker-service/
+      Handler: lambda/handler.handler
+      Timeout: 60
+      Environment:
+        Variables:
+          DB_HOST: !Ref DbHost
+          DB_USER: !Ref DbUser
+          DB_PASS: !Ref DbPass
+          DB_NAME: !Ref DbName
+          DB_PORT: !Ref DbPort
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref AwsBucket
+        - SQSPollerPolicy:
+            QueueName: !Select [4, !Split ["/", !Ref SqsQueueUrl]]
+        - CloudWatchLogsFullAccess
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !Ref SqsQueueArn
+            BatchSize: 5
+            FunctionResponseTypes: [ReportBatchItemFailures]
+
+Outputs:
+  ApiUrl:
+    Description: HTTP API base URL
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"

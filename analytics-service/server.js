@@ -6,8 +6,8 @@ const path   = require('path');
 const app    = require('./src/app');
 const logger = require('./src/utils/logger');
 
-const PORT      = process.env.PORT      || ;
-const HTTP_PORT = process.env.HTTP_PORT || (PORT + 1000);
+const PORT      = parseInt(process.env.PORT)      || 4003;
+const HTTP_PORT = parseInt(process.env.HTTP_PORT) || (PORT + 1000);
 
 const certPath = process.env.TLS_CERT || path.resolve(__dirname, '../certs/cert.pem');
 const keyPath  = process.env.TLS_KEY  || path.resolve(__dirname, '../certs/key.pem');

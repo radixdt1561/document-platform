@@ -1,105 +1,105 @@
-variable "services" {
-  default = ["auth-service", "document-service", "analytics-service", "user-service", "worker-service"]
-}
-
-# ── ECS Cluster ──────────────────────────────────────────────────────────────
-resource "aws_ecs_cluster" "main" {
-  name = "document-platform"
-
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
+variable "functions" {
+  default = {
+    "doc-platform-auth"      = { min = 2, max = 20 }
+    "doc-platform-documents" = { min = 2, max = 50 }
+    "doc-platform-analytics" = { min = 1, max = 10 }
+    "doc-platform-users"     = { min = 1, max = 10 }
+    "doc-platform-worker"    = { min = 2, max = 100 }
   }
 }
 
-# ── Auto Scaling — one target per service ────────────────────────────────────
-resource "aws_appautoscaling_target" "ecs" {
-  for_each = toset(var.services)
+# ── Provisioned Concurrency (keeps warm instances ready) ─────────────────────
+resource "aws_lambda_provisioned_concurrency_config" "warm" {
+  for_each = var.functions
 
-  max_capacity       = 10
-  min_capacity       = 2
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${each.key}"
-  scalable_dimension = "ecs:service:DesiredCount"
-  service_namespace  = "ecs"
+  function_name                  = each.key
+  qualifier                      = "live"
+  provisioned_concurrent_executions = each.value.min
 }
 
-# Scale OUT — CPU > 70%
-resource "aws_appautoscaling_policy" "cpu_scale_out" {
-  for_each = toset(var.services)
+# ── Application Auto Scaling target per function ──────────────────────────────
+resource "aws_appautoscaling_target" "lambda" {
+  for_each = var.functions
 
-  name               = "${each.key}-cpu-scale-out"
+  max_capacity       = each.value.max
+  min_capacity       = each.value.min
+  resource_id        = "function:${each.key}:live"
+  scalable_dimension = "lambda:function:ProvisionedConcurrency"
+  service_namespace  = "lambda"
+}
+
+# ── Scale on utilisation > 70% ────────────────────────────────────────────────
+resource "aws_appautoscaling_policy" "lambda_utilisation" {
+  for_each = var.functions
+
+  name               = "${each.key}-utilisation-scaling"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs[each.key].resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs[each.key].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs[each.key].service_namespace
+  resource_id        = aws_appautoscaling_target.lambda[each.key].resource_id
+  scalable_dimension = aws_appautoscaling_target.lambda[each.key].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.lambda[each.key].service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value       = 70.0
+    target_value       = 0.7   # 70% provisioned concurrency utilisation
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
 
     predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageCPUUtilization"
-    }
-  }
-}
-
-# Scale OUT — Memory > 75%
-resource "aws_appautoscaling_policy" "memory_scale_out" {
-  for_each = toset(var.services)
-
-  name               = "${each.key}-memory-scale-out"
-  policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.ecs[each.key].resource_id
-  scalable_dimension = aws_appautoscaling_target.ecs[each.key].scalable_dimension
-  service_namespace  = aws_appautoscaling_target.ecs[each.key].service_namespace
-
-  target_tracking_scaling_policy_configuration {
-    target_value       = 75.0
-    scale_in_cooldown  = 300
-    scale_out_cooldown = 60
-
-    predefined_metric_specification {
-      predefined_metric_type = "ECSServiceAverageMemoryUtilization"
+      predefined_metric_type = "LambdaProvisionedConcurrencyUtilization"
     }
   }
 }
 
 # ── CloudWatch Alarms ─────────────────────────────────────────────────────────
-resource "aws_cloudwatch_metric_alarm" "high_cpu" {
-  for_each = toset(var.services)
+resource "aws_cloudwatch_metric_alarm" "throttles" {
+  for_each = var.functions
 
-  alarm_name          = "${each.key}-high-cpu"
+  alarm_name          = "${each.key}-throttles"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  metric_name         = "CPUUtilization"
-  namespace           = "AWS/ECS"
+  metric_name         = "Throttles"
+  namespace           = "AWS/Lambda"
   period              = 60
-  statistic           = "Average"
-  threshold           = 85
-  alarm_description   = "CPU > 85% for 2 minutes on ${each.key}"
+  statistic           = "Sum"
+  threshold           = 10
+  alarm_description   = "Lambda throttles > 10 for 2 minutes on ${each.key}"
 
   dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = each.key
+    FunctionName = each.key
   }
 }
 
-resource "aws_cloudwatch_metric_alarm" "high_memory" {
-  for_each = toset(var.services)
+resource "aws_cloudwatch_metric_alarm" "errors" {
+  for_each = var.functions
 
-  alarm_name          = "${each.key}-high-memory"
+  alarm_name          = "${each.key}-errors"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 2
-  metric_name         = "MemoryUtilization"
-  namespace           = "AWS/ECS"
+  metric_name         = "Errors"
+  namespace           = "AWS/Lambda"
   period              = 60
-  statistic           = "Average"
-  threshold           = 85
-  alarm_description   = "Memory > 85% for 2 minutes on ${each.key}"
+  statistic           = "Sum"
+  threshold           = 5
+  alarm_description   = "Lambda errors > 5 for 2 minutes on ${each.key}"
 
   dimensions = {
-    ClusterName = aws_ecs_cluster.main.name
-    ServiceName = each.key
+    FunctionName = each.key
+  }
+}
+
+resource "aws_cloudwatch_metric_alarm" "duration_p99" {
+  for_each = var.functions
+
+  alarm_name          = "${each.key}-duration-p99"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 3
+  extended_statistic  = "p99"
+  metric_name         = "Duration"
+  namespace           = "AWS/Lambda"
+  period              = 60
+  threshold           = 25000   # 25s — alert before 30s timeout
+  alarm_description   = "p99 duration > 25s on ${each.key}"
+
+  dimensions = {
+    FunctionName = each.key
   }
 }

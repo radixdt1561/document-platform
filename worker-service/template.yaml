@@ -1,0 +1,57 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  SqsQueueUrl:
+    Type: String
+  SqsQueueArn:
+    Type: String
+  AwsBucket:
+    Type: String
+  EncryptionKey:
+    Type: String
+    NoEcho: true
+  JwtSecret:
+    Type: String
+    NoEcho: true
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 60
+    MemorySize: 256
+    Environment:
+      Variables:
+        NODE_ENV: production
+        AWS_BUCKET: !Ref AwsBucket
+        SQS_QUEUE_URL: !Ref SqsQueueUrl
+        ENCRYPTION_KEY: !Ref EncryptionKey
+        LOG_LEVEL: info
+        CLOUDWATCH_GROUP: /document-platform
+        CLOUDWATCH_REGION: !Ref AWS::Region
+
+Resources:
+  DocumentWorkerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: document-platform-worker
+      CodeUri: ./
+      Handler: lambda/handler.handler
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref AwsBucket
+        - SQSPollerPolicy:
+            QueueName: !Select [4, !Split ['/', !Ref SqsQueueUrl]]
+        - CloudWatchLogsFullAccess
+      Events:
+        SQSTrigger:
+          Type: SQS
+          Properties:
+            Queue: !Ref SqsQueueArn
+            BatchSize: 5
+            FunctionResponseTypes:
+              - ReportBatchItemFailures
+
+Outputs:
+  FunctionArn:
+    Value: !GetAtt DocumentWorkerFunction.Arn

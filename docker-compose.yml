@@ -149,6 +149,11 @@ services:
     environment:
       PORT: 4006
       NODE_ENV: ${NODE_ENV}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASS: ${DB_PASS}
+      DB_NAME: ${DB_NAME}
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
       AWS_SECRET_KEY: ${AWS_SECRET_KEY}
       AWS_REGION: ${AWS_REGION}
@@ -156,7 +161,8 @@ services:
       SQS_QUEUE_URL: ${SQS_QUEUE_URL}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     depends_on:
-      - api-gateway
+      postgres:
+        condition: service_healthy
 
 volumes:
   postgres_data:

@@ -110,19 +110,35 @@ jobs:
         run: npm audit --audit-level=high
         working-directory: ${{ matrix.service }}
 
-  # ── 3. Build Docker images ───────────────────────────────────────────────────
-  build:
-    name: Build — ${{ matrix.service }}
+  # ── 3. Deploy via SAM (Lambda) ───────────────────────────────────────────────
+  deploy:
+    name: SAM Deploy to Lambda
     runs-on: ubuntu-latest
     needs: [test, audit]
     if: github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        service: [auth-service, document-service, analytics-service, user-service, worker-service, api-gateway]
 
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install all service dependencies
+        run: |
+          for svc in auth-service document-service analytics-service user-service worker-service; do
+            echo "Installing $svc..."
+            if [ -f "$svc/pnpm-lock.yaml" ]; then
+              pnpm install --frozen-lockfile --dir $svc
+            else
+              npm ci --prefix $svc
+            fi
+          done
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -130,55 +146,39 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
-      - name: Login to ECR
-        id: ecr-login
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build & push
-        env:
-          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
-          IMAGE_TAG:    ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/${{ matrix.service }}:$IMAGE_TAG \
-                       -t $ECR_REGISTRY/${{ matrix.service }}:latest \
-                       ./${{ matrix.service }}
-          docker push $ECR_REGISTRY/${{ matrix.service }}:$IMAGE_TAG
-          docker push $ECR_REGISTRY/${{ matrix.service }}:latest
-
-  # ── 4. Deploy to ECS ─────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy — ${{ matrix.service }}
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    strategy:
-      matrix:
-        service: [auth-service, document-service, analytics-service, user-service, worker-service, api-gateway]
-
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Setup SAM CLI
+        uses: aws-actions/setup-sam@v2
         with:
-          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region:            ${{ env.AWS_REGION }}
+          use-installer: true
 
-      - name: Force ECS redeploy
+      - name: SAM Build
+        run: sam build --template template.yaml
+
+      - name: SAM Deploy
         run: |
-          aws ecs update-service \
-            --cluster document-platform \
-            --service ${{ matrix.service }} \
-            --force-new-deployment \
-            --query 'service.serviceName' \
-            --output text
+          sam deploy \
+            --no-confirm-changeset \
+            --no-fail-on-empty-changeset \
+            --stack-name document-platform \
+            --s3-bucket ${{ secrets.SAM_DEPLOY_BUCKET }} \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+              DbHost=${{ secrets.DB_HOST }} \
+              DbUser=${{ secrets.DB_USER }} \
+              DbPass=${{ secrets.DB_PASS }} \
+              DbName=${{ secrets.DB_NAME }} \
+              JwtSecret=${{ secrets.JWT_SECRET }} \
+              EncryptionKey=${{ secrets.ENCRYPTION_KEY }} \
+              AwsBucket=${{ secrets.AWS_BUCKET }} \
+              SqsQueueUrl=${{ secrets.SQS_QUEUE_URL }} \
+              SqsQueueArn=${{ secrets.SQS_QUEUE_ARN }} \
+              RedisUrl=${{ secrets.REDIS_URL }} \
+              AllowedOrigins=${{ secrets.ALLOWED_ORIGINS }} \
+              GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID }} \
+              GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }} \
+              GoogleCallbackUrl=${{ secrets.GOOGLE_CALLBACK_URL }}
 
-      - name: Wait for stability
-        run: |
-          aws ecs wait services-stable \
-            --cluster document-platform \
-            --services ${{ matrix.service }}
-
-  # ── 5. Load test (post-deploy, main only) ────────────────────────────────────
+  # ── 4. Load test (post-deploy, main only) ────────────────────────────────────
   load-test:
     name: Load Test
     runs-on: ubuntu-latest

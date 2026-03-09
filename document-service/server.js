@@ -9,8 +9,8 @@ const { startMemoryMonitor } = require('./src/utils/memoryMonitor');
 
 startMemoryMonitor();
 
-const PORT      = process.env.PORT      || ;
-const HTTP_PORT = process.env.HTTP_PORT || (PORT + 1000);
+const PORT      = parseInt(process.env.PORT)      || 4002;
+const HTTP_PORT = parseInt(process.env.HTTP_PORT) || (PORT + 1000);
 
 const certPath = process.env.TLS_CERT || path.resolve(__dirname, '../certs/cert.pem');
 const keyPath  = process.env.TLS_KEY  || path.resolve(__dirname, '../certs/key.pem');
