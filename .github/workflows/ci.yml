@@ -9,6 +9,11 @@ on:
 env:
   NODE_VERSION: '22'
 
+permissions:
+  id-token: write # Required for OIDC token generation
+  contents: read # Good practice for checkout
+
+
 jobs:
   # ── 1. Test ──────────────────────────────────────────────────────────────────
   test:
