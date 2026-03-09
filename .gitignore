@@ -19,6 +19,3 @@ coverage/
 
 # OS
 .DS_Store
-
-# Lock files (keep package-lock.json, ignore pnpm/yarn if not used)
-**/pnpm-lock.yaml
