@@ -131,6 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test, audit]
     if: github.ref == 'refs/heads/main'
+    environment: production   # ← add this if secrets are env-scoped
 
     steps:
       - uses: actions/checkout@v4
@@ -142,14 +143,6 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 10
-
-      - name: Check secrets are set
-        run: |
-          [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] && echo "ERROR: AWS_ACCESS_KEY_ID is empty" || echo "AWS_ACCESS_KEY_ID is set"
-          [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] && echo "ERROR: AWS_SECRET_ACCESS_KEY is empty" || echo "AWS_SECRET_ACCESS_KEY is set"
-      - name: check key
-        run: | 
-          aws sts get-caller-identity
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
