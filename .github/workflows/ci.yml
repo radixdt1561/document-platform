@@ -172,6 +172,7 @@ jobs:
           REFRESH_TOKEN_SECRET: ${{ secrets.REFRESH_TOKEN_SECRET }}
           ENCRYPTION_KEY:       ${{ secrets.ENCRYPTION_KEY }}
           AWS_BUCKET:           ${{ secrets.AWS_BUCKET }}
+          DEPLOY_BUCKET:        ${{ secrets.DEPLOY_BUCKET }}
           SQS_QUEUE_URL:        ${{ secrets.SQS_QUEUE_URL }}
           SQS_QUEUE_ARN:        ${{ secrets.SQS_QUEUE_ARN }}
           REDIS_URL:            ${{ secrets.REDIS_URL }}
@@ -195,11 +196,13 @@ jobs:
               npm ci --prefix $svc --omit=dev
             fi
 
-            # Zip and upload
+            # Zip, upload to S3, then deploy from S3 (avoids 70MB direct upload limit)
             (cd $svc && zip -qr /tmp/${fn}.zip . --exclude "*.test.js" "tests/*" "coverage/*" ".env*")
+            aws s3 cp /tmp/${fn}.zip s3://$DEPLOY_BUCKET/lambda-deployments/${fn}.zip
             aws lambda update-function-code \
               --function-name $fn \
-              --zip-file fileb:///tmp/${fn}.zip \
+              --s3-bucket $DEPLOY_BUCKET \
+              --s3-key lambda-deployments/${fn}.zip \
               --no-cli-pager
 
             # Wait for update to complete before updating config
@@ -268,7 +271,40 @@ jobs:
           SMTP_USER:            ${{ secrets.SMTP_USER }}
           SMTP_PASS:            ${{ secrets.SMTP_PASS }}
 
-  # ── 4. Load test (post-deploy, main only) ────────────────────────────────────
+  # ── 4. DB Migrate (post-deploy, main only) ─────────────────────────────────
+  migrate:
+    name: Run DB Migrations
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install auth-service deps
+        run: pnpm install --frozen-lockfile
+        working-directory: auth-service
+
+      - name: Run Sequelize migrations
+        working-directory: auth-service
+        env:
+          NODE_ENV:  production
+          DB_HOST:   ${{ secrets.DB_HOST }}
+          DB_USER:   ${{ secrets.DB_USER }}
+          DB_PASS:   ${{ secrets.DB_PASS }}
+          DB_NAME:   ${{ secrets.DB_NAME }}
+          DB_PORT:   5432
+        run: npx sequelize-cli db:migrate
+
+  # ── 5. Load test (post-deploy, main only) ────────────────────────────────────
   load-test:
     name: Load Test
     runs-on: ubuntu-latest
