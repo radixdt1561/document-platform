@@ -1,7 +1,6 @@
 const passport = require('passport');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const { User, Role } = require('../models');
-const { encrypt } = require('../utils/crypto');
 const logger = require('../utils/logger');
 const { maskEmail } = require('../utils/mask');
 

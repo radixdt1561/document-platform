@@ -47,7 +47,7 @@ module.exports = (sequelize, DataTypes) => {
     timestamps: true
   });
 
-  User.beforeCreate(async (user, options) => {
+  User.beforeCreate(async (user, _options) => {
     const salt = await bcrypt.genSalt(10);
     user.password = await bcrypt.hash(user.password, salt);
   });

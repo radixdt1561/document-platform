@@ -1,4 +1,4 @@
-const { User, Role, Profile, UploadEvent, sequelize } = require('../models');
+const { sequelize } = require('../models');
 const { QueryTypes } = require('sequelize');
 const cache = require('../utils/cache');
 const logger = require('../utils/logger');

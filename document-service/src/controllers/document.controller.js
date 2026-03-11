@@ -4,7 +4,6 @@ const s3 = require('../config/aws');
 const { handleUpload } = require('../services/documentService');
 const { Document } = require('../models');
 const cache = require('../utils/cache');
-const logger = require('../utils/logger');
 const AppError = require('../utils/AppError');
 
 const listDocuments = async (req, res, next) => {

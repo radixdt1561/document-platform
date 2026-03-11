@@ -8,7 +8,7 @@ const pool = {
 };
 
 const slowQueryLogger = (query, time) => {
-  if (time > 500) console.warn(`[SLOW QUERY] ${time}ms :: ${query}`);
+  if (time > 500) process.stderr.write(`[SLOW QUERY] ${time}ms :: ${query}\n`);
 };
 
 module.exports = {

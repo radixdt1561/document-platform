@@ -1,7 +1,7 @@
 const { User, Role, RefreshToken, Profile, sequelize } = require('../models');
 const { comparePassword } = require('../utils/hash');
 const { generateAccessToken, generateRefreshToken, verifyRefreshToken } = require('../utils/jwt');
-const { maskEmail, maskUser } = require('../utils/mask');
+const { maskEmail } = require('../utils/mask');
 const logger = require('../utils/logger');
 const nodemailer = require('nodemailer');
 

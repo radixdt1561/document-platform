@@ -1,4 +1,4 @@
-const { matchedData, validationResult } = require('express-validator');
+const { validationResult } = require('express-validator');
 
 // Strips null bytes and trims all string fields in body/query/params
 const sanitizeInput = (req, res, next) => {
