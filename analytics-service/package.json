@@ -5,8 +5,14 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
+    "test:unit": "jest tests/unit --testEnvironment node --ci",
     "audit": "npm audit --audit-level=high",
     "audit:fix": "npm audit fix"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": ["src/**/*.js"]
   },
   "dependencies": {
     "serverless-http": "^3.2.0",
@@ -28,6 +34,8 @@
     "winston-cloudwatch": "^6.3.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   }
 }

@@ -2,6 +2,7 @@ const express = require('express');
 const { runFileWorker } = require('./services/workerService');
 const processFile = require('./workers/fileProcessor');
 const pool = require('./workers/pool');
+const authenticate = require('./middlewares/auth.middleware');
 const errorHandler = require('./middlewares/errorHandler');
 const { helmetConfig, corsOptions, globalLimiter, hppProtect, attackDetection } = require('./middlewares/security');
 const { sanitizeInput } = require('./middlewares/sanitize');
@@ -21,7 +22,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.post('/workers/file', async (req, res, next) => {
+app.post('/workers/file', authenticate, async (req, res, next) => {
   try {
     const { fileName, s3Key } = req.body;
     const [workerResult, checksum] = await Promise.all([
@@ -32,7 +33,7 @@ app.post('/workers/file', async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-app.post('/workers/report', async (req, res, next) => {
+app.post('/workers/report', authenticate, async (req, res, next) => {
   try {
     const result = await pool.run(req.body.data);
     res.json({ result });

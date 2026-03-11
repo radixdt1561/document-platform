@@ -6,8 +6,14 @@
     "dev": "nodemon server.js",
     "start": "node server.js",
     "deploy:lambda": "sam build && sam deploy --guided",
+    "test:unit": "jest tests/unit --testEnvironment node --ci",
     "audit": "npm audit --audit-level=high",
     "audit:fix": "npm audit fix"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": ["src/**/*.js"]
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
@@ -19,6 +25,7 @@
     "express-rate-limit": "^7.5.0",
     "hpp": "^0.2.3",
     "express-validator": "^7.2.1",
+    "jsonwebtoken": "^9.0.3",
     "pg": "^8.19.0",
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
@@ -28,6 +35,8 @@
     "winston-cloudwatch": "^6.3.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.14"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.2.2"
   }
 }
