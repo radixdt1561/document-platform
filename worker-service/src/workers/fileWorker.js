@@ -2,7 +2,7 @@ const { workerData, parentPort } = require("worker_threads");
 const crypto = require("crypto");
 
 function processFile(data) {
-  console.log("Worker processing file:==>>", data.fileName);
+  process.stderr.write(`Worker processing file:==>>${data.fileName}\n`);
 
   const hash = crypto
     .createHash("sha256")

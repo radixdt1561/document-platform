@@ -1,8 +1,8 @@
+'use strict';
+
+// Mock DB model before any handler is loaded — prevents Sequelize connection on require
 jest.mock('../../src/models/uploadEvent', () => ({
-  UploadEvent: {
-    create: jest.fn(),
-    update: jest.fn(),
-  },
+  UploadEvent: { create: jest.fn(), update: jest.fn() },
 }));
 jest.mock('../../src/services/workerService', () => ({ runFileWorker: jest.fn() }));
 jest.mock('../../src/workers/fileProcessor', () => jest.fn());
@@ -47,7 +47,7 @@ describe('worker handlers', () => {
   });
 
   describe('handleVirusScan', () => {
-    it('runs worker and processFile, then updates UploadEvent', async () => {
+    it('runs worker and processFile then updates UploadEvent', async () => {
       runFileWorker.mockResolvedValue({ status: 'clean' });
       processFile.mockResolvedValue('abc123');
       UploadEvent.update.mockResolvedValue([1]);

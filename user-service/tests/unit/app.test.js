@@ -1,10 +1,13 @@
-jest.mock('../../src/utils/cache', () => ({ get: jest.fn(), set: jest.fn() }));
+'use strict';
+
+// Mock Redis cache before app is loaded — prevents client.connect() on require
+jest.mock('../../src/utils/cache', () => ({ get: jest.fn(), set: jest.fn(), del: jest.fn() }));
 jest.mock('../../src/utils/logger', () => ({ info: jest.fn(), error: jest.fn(), warn: jest.fn() }));
-jest.mock('../../src/middlewares/auth.middleware', () => (req, res, next) => {
+jest.mock('../../src/middlewares/auth.middleware', () => (req, _res, next) => {
   req.user = { id: 1, name: 'Alice', email: 'a@b.com', role: 'USER' };
   next();
 });
-jest.mock('../../src/middlewares/rbac.middleware', () => () => (req, res, next) => next());
+jest.mock('../../src/middlewares/rbac.middleware', () => () => (_req, _res, next) => next());
 
 const request = require('supertest');
 const app = require('../../src/app');
@@ -35,7 +38,7 @@ describe('user-service routes', () => {
       expect(cache.set).toHaveBeenCalled();
     });
 
-    it('calls next with error on cache failure', async () => {
+    it('returns 500 on cache failure', async () => {
       cache.get.mockRejectedValue(new Error('Redis down'));
 
       const res = await request(app).get('/users/profile');
@@ -44,7 +47,7 @@ describe('user-service routes', () => {
   });
 
   describe('GET /users/admin/dashboard', () => {
-    it('returns welcome message for admin', async () => {
+    it('returns welcome message', async () => {
       const res = await request(app).get('/users/admin/dashboard');
       expect(res.status).toBe(200);
       expect(res.body).toHaveProperty('message');

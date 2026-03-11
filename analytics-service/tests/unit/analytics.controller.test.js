@@ -1,8 +1,7 @@
+'use strict';
+
+// Must mock before any app module is required
 jest.mock('../../src/models', () => ({
-  User: {},
-  Role: {},
-  Profile: {},
-  UploadEvent: {},
   sequelize: { query: jest.fn() },
 }));
 jest.mock('../../src/utils/cache', () => ({ get: jest.fn(), set: jest.fn() }));

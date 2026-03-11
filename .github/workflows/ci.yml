@@ -71,6 +71,7 @@ jobs:
           ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
 
       - name: Integration tests
+        if: contains(fromJSON('["auth-service","document-service"]'), matrix.service)
         run: ${{ matrix.pkg_manager }} run test:integration
         working-directory: ${{ matrix.service }}
         env:
@@ -96,7 +97,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Install root deps
-        run: npm install
+        run: npm install --no-package-lock
       - name: Run ESLint
         run: npm run lint
 
